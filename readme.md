@@ -25,6 +25,8 @@ Without valid Plaid credentials, the app will not function.
 👉 You can sign up for Plaid here:
 https://plaid.com
 
+To use this app it must run in the localhost:5000 in your web browser.
+
 🧪 Sandbox vs 🚀 Production Modes
 
 Plaid provides two main environments:
