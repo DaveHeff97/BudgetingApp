@@ -1,0 +1,10 @@
+.env
+budget_data_web.json
+backups/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/

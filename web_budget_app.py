@@ -18,6 +18,10 @@ import json
 import os
 from typing import Dict
 import secrets
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Plaid imports
 try:
@@ -41,10 +45,10 @@ app.secret_key = secrets.token_hex(32)
 DATA_FILE = "budget_data_web.json"
 
 # ==================== PLAID CONFIGURATION ====================
-PLAID_CLIENT_ID = 'x'
-PLAID_SANDBOX_SECRET = 'x'
-PLAID_PRODUCTION_SECRET = 'x'
-PLAID_ENVIRONMENT = 'production'
+PLAID_CLIENT_ID = os.getenv('PLAID_CLIENT_ID')
+PLAID_SANDBOX_SECRET = os.getenv('PLAID_SANDBOX_SECRET')
+PLAID_PRODUCTION_SECRET = os.getenv('PLAID_PRODUCTION_SECRET')
+PLAID_ENVIRONMENT = os.getenv('PLAID_ENV', 'sandbox')
 
 # Initialize Plaid client
 plaid_client = None
@@ -436,10 +440,11 @@ def detect_recurring_transactions(data: Dict):
 
 def auto_categorize_spending(data: Dict):
     """Automatically categorize transactions into budget categories"""
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
     transactions = data.get('transactions', [])
     now = datetime.now()
+    thirty_days_ago = now - timedelta(days=30)  # Look back 30 days
 
     categorized = {
         'groceries': 0,
@@ -453,18 +458,18 @@ def auto_categorize_spending(data: Dict):
     grocery_keywords = ['grocery', 'market', 'food', 'walmart', 'target', 'costco', 'whole foods', 'aldi', 'kroger', 'publix']
     bill_keywords = ['electric', 'water', 'gas', 'internet', 'phone', 'insurance', 'rent', 'mortgage', 'utilities', 'cable']
 
-    # Income keywords - only count these as real income
+    # Income keywords
     income_keywords = ['payroll', 'salary', 'deposit', 'payment', 'direct dep', 'paycheck', 'wages', 'employer']
 
     # Ignore these (not real income)
     ignore_keywords = ['round-up', 'round up', 'transfer', 'refund', 'reversal', 'credit']
 
-    # Only look at current month transactions
+    # Look at last 30 days of transactions
     for trans in transactions:
         try:
             trans_date = datetime.fromisoformat(trans['date'])
-            # Skip if not current month
-            if trans_date.year != now.year or trans_date.month != now.month:
+            # Skip if older than 30 days
+            if trans_date < thirty_days_ago:
                 continue
         except:
             pass  # If date parsing fails, include it
@@ -490,7 +495,6 @@ def auto_categorize_spending(data: Dict):
             elif amount > 50 and 'transfer' not in desc and 'refund' not in desc:
                 # Medium amounts that aren't transfers/refunds
                 categorized['income'] += amount
-            # Otherwise skip small credits under $50
 
         elif amount < 0:  # Expense
             abs_amount = abs(amount)
@@ -1559,7 +1563,7 @@ async function loadTransactions() {
         const items = await response.json();
 
         const tbody = document.querySelector('#transactions-table tbody');
-        const recentTransactions = items.slice(-50).reverse();
+        const recentTransactions = items.reverse(); // Show all transactions
 
         tbody.innerHTML = recentTransactions.map(t => `
             <tr>
@@ -1787,6 +1791,18 @@ document.addEventListener('DOMContentLoaded', function() {
 </body>
 </html>
 '''
+
+# Auto-open browser on startup
+import webbrowser
+import threading
+
+def open_browser():
+    webbrowser.open("http://localhost:5000")
+
+# Open browser 1 second after server starts
+threading.Timer(1, open_browser).start()
+
+
 # ==================== MAIN EXECUTION ====================
 if __name__ == '__main__':
     print('\n' + '='*70)
